@@ -67,7 +67,7 @@ exports.update = (req, res) => {
 
 	const id = req.params.id;
 
-	Room.findByIdAndUpdate(id, req.body, { useFindAndModify: false })
+	Room.findByIdAndUpdate(id, req.body, { useFindAndModify: false, new: true })
 		.then((data) => {
 			if (!data) {
 				res.status(404).send({
