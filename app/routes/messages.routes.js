@@ -3,26 +3,18 @@ module.exports = (app) => {
 
 	var router = require("express").Router();
 
-	// Create a new Tutorial
+	// tao tin
 	router.post("/", messages.create);
 
 	// Retrieve all Tutorials
-	router.get("/", messages.findAll);
+	router.get("/room", messages.getAllMessage);
 
-	// Retrieve all published Tutorials
-	router.get("/seen", messages.findAllNotSeen);
+	// sua tin
+	router.put("/", messages.updateMessage);
 
-	// Retrieve a single Tutorial with id
-	router.get("/:id", messages.findOne);
+	// xoa message
+	router.delete("/", messages.deleteMessage);
 
-	// Update a Tutorial with id
-	router.put("/:id", messages.update);
 
-	// Delete a Tutorial with id
-	router.delete("/:id", messages.delete);
-
-	// Create a new Tutorial
-	router.delete("/", messages.deleteAll);
-
-	app.use("/api/messages", router);
+	app.use("/messages", router);
 };

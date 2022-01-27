@@ -1,134 +1,209 @@
 const db = require("../models");
 const Room = db.rooms;
+const userService = require("../services/user.services");
+const roomService = require("../services/room.services");
+const strip = require("../utils/trim.utils");
+
+const redis = require("../services/redis.services");
 
 // Create and Save a new Room
 exports.create = (req, res) => {
 	// Validate request
-	if (!req.body.room_name) {
+	if (!req.query.room_name) {
 		res.status(400).send({ message: "Room name can not be empty!" });
+		return;
+	}
+	if (strip.strip(req.query.room_name).length == 0){
+		res.status(404).send({ message: "room name is required"})
 		return;
 	}
 
 	// Create a Room
 	const room = new Room({
-		room_name: req.body.room_name,
+		room_name: req.query.room_name,
 	});
 
-	// Save Room in the database
-	room
-		.save(room)
-		.then((data) => {
-			res.send(data);
-		})
-		.catch((err) => {
-			res.status(500).send({
-				message: err.message || "Some error occurred while creating the Room.",
+	const user_id = req.body.user_id;
+	if (!user_id) {
+		res.status(404).send({ message: "user_id is required"});
+		return;
+	}
+
+	userService.getUserById(user_id, (err, user) => {
+		if (err) {
+			res.status(404).send(err);
+		}
+		room.save(room)
+			.then((data) => {
+				const info = {
+					room_id: room.id,
+					member_name: user.username,
+					is_owner: true,
+				};
+
+				roomService.inviteMember(info, (err, member) => {
+					if (err) {
+						res.status(404).send(err);
+					}
+					res.send({ room: data, owner: user });
+				});
+			})
+			.catch((err) => {
+				res.status(500).send({
+					message: err.message || "Some error occurred while creating the Room.",
+				});
 			});
-		});
+	});
 };
 
-// Retrieve all Rooms from the database.
+// Lay user o
 exports.findAll = (req, res) => {
-	const room_name = req.query.room_name;
-	var condition = room_name ? { room_name: { $regex: new RegExp(room_name), $options: "i" } } : {};
-
-	Room.find(condition)
-		.then((data) => {
-			res.send(data);
-		})
-		.catch((err) => {
-			res.status(500).send({
-				message: err.message || "Some error occurred while retrieving rooms.",
-			});
-		});
+	const user_id = req.params.user_id;
+	console.log("herrr", user_id);
+	roomService.inRoom(user_id, (err, rooms) => {
+		if (err) {
+			res.status(404).send(err);
+		}
+		res.send({rooms: rooms, count: rooms.length});
+	})
 };
 
-// Find a single Room with an id
-exports.findOne = (req, res) => {
-	const id = req.params.id;
 
-	Room.findById(id)
-		.then((data) => {
-			if (!data) res.status(404).send({ message: "Not found Room with id " + id });
-			else res.send(data);
-		})
-		.catch((err) => {
-			res.status(500).send({ message: "Error retrieving Room with id=" + id });
+exports.inviteMember = (req, res) => {
+	const info = {
+		room_id: req.body.room_id,
+		member_name: req.body.member_name,
+		is_owner: false,
+	};
+
+	const checkExist = {
+		room_id: req.body.room_id,
+		member_name: req.body.member_name
+	};
+	roomService.checkMemberExists(checkExist, (err, member) => {
+		if (err) {
+			console.log("err", err)
+			res.status(404).send(err)
+			return;
+		}
+		if (member){
+			res.status(400).send({"message": "Member in room already exists or user is unauthenticated"})
+			return;
+		}
+		roomService.inviteMember(info, (err, member) => {
+			if (err) {
+				res.status(404).send(err);
+				return;
+			}
+
+			const event = { event_type: "invite", payload: { room_id: info.room_id } };
+			const user_id = member.member_id
+    		const channel = `${user_id}_notify`
+			redis.publish(channel=channel, event=event)
+			res.send(member);
 		});
-};
+	})
+	
+}
 
-// Update a Room by the id in the request
-exports.update = (req, res) => {
+exports.removeMember = (req, res) => {
+	const info = {
+		room_id: req.body.room_id,
+		member_name: req.body.member_name,
+	};
+
+	// code kiem tra admin o day
+	roomService.removeMember(info, (err, member) => {
+		if (err) {
+			res.status(400).send("Cannot remove member")
+			return;
+		}
+		const event = {event_type: "delete", payload: {room_id: info.room_id}}
+        const channel = `${member}_notify`
+		redis.publish(channel=channel, event=event)
+		res.send({success: true})
+	})
+}
+
+// Cap nhap phong
+exports.updateRoom = (req, res) => {
 	if (!req.body) {
 		return res.status(400).send({
 			message: "Data to update can not be empty!",
 		});
 	}
 
-	const id = req.params.id;
+	const room_id = req.body.room_id
 
-	Room.findByIdAndUpdate(id, req.body, { useFindAndModify: false, new: true })
+	const info = {
+		room_name: strip.strip(req.body.room_name),
+		avatar: strip.strip(req.body.avatar)
+	}
+
+	Room.findByIdAndUpdate(room_id, info, { useFindAndModify: false, new: true })
 		.then((data) => {
 			if (!data) {
 				res.status(404).send({
-					message: `Cannot update Room with id=${id}. Maybe Room was not found!`,
+					message: `Cannot update Room with id=${room_id}. Maybe Room was not found!`,
 				});
-			} else res.send({ message: "Room was updated successfully." });
+			} else res.send({room: data});
 		})
 		.catch((err) => {
 			res.status(500).send({
-				message: "Error updating Room with id=" + id,
+				message: "Error updating Room with id=" + room_id,
 			});
 		});
 };
 
-// Delete a Room with the specified id in the request
-exports.delete = (req, res) => {
-	const id = req.params.id;
-
-	Room.findByIdAndRemove(id, { useFindAndModify: false })
-		.then((data) => {
-			if (!data) {
-				res.status(404).send({
-					message: `Cannot delete Room with id=${id}. Maybe Room was not found!`,
+// xoa phong
+exports.deleteRoom = (req, res) => {
+	const id = req.params.room_id;
+	// code kiem tra admin o day
+	roomService.roomDelete(id, (err, statuss) => {
+		if (err) { res.status(500).send({success: false})}
+		Room.findByIdAndRemove(id, { useFindAndModify: false })
+			.then((data) => {
+				if (!data) {
+					res.status(404).send({
+						message: `Cannot delete Room with id=${id}. Maybe Room was not found!`,
+					});
+				} else {
+					res.send(statuss);
+				}
+			})
+			.catch((err) => {
+				res.status(500).send({
+					message: "Could not delete Room with id=" + id,
 				});
-			} else {
-				res.send({
-					message: "Room was deleted successfully!",
-				});
-			}
-		})
-		.catch((err) => {
-			res.status(500).send({
-				message: "Could not delete Room with id=" + id,
 			});
-		});
+	});
 };
 
-// Delete all Rooms from the database.
-exports.deleteAll = (req, res) => {
-	Room.deleteMany({})
-		.then((data) => {
-			res.send({
-				message: `${data.deletedCount} Rooms were deleted successfully!`,
-			});
-		})
-		.catch((err) => {
-			res.status(500).send({
-				message: err.message || "Some error occurred while removing all rooms.",
-			});
-		});
-};
 
-// Find all published Rooms
-exports.findAllPrivate = (req, res) => {
-	Room.find({ type: 'private' })
-		.then((data) => {
-			res.send(data);
-		})
-		.catch((err) => {
-			res.status(500).send({
-				message: err.message || "Some error occurred while retrieving rooms.",
-			});
-		});
-};
+exports.getOutRoom = (req, res) => {
+	// kiem tra admin o day
+	const info = {
+		room_id: req.body.room_id,
+		member_name: req.body.member_name,
+	};
+
+	// code kiem tra admin o day
+	roomService.removeMember(info, (err, member) => {
+		if (err) {
+			res.status(400).send("Cannot get out room");
+			return;
+		}
+		res.send({ success: true });
+	});
+}
+
+exports.getMembersRoom = (req, res) => {
+	const room_id = req.query.room_id
+	roomService.getMembers(room_id, (err, members) => {
+		if (err) {
+			res.status(404).send(err)
+			return;
+		}
+		res.send({members: members});
+	})
+}

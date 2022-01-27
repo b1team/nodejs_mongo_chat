@@ -3,26 +3,27 @@ module.exports = (app) => {
 
 	var router = require("express").Router();
 
-	// Create a new Tutorial
+	// tao phong
 	router.post("/", rooms.create);
 
-	// Retrieve all Tutorials
-	router.get("/", rooms.findAll);
+	// moi thanh vien
+	router.post("/invite", rooms.inviteMember);
 
-	// Retrieve all published Tutorials
-	router.get("/private", rooms.findAllPrivate);
+	router.delete("/remove", rooms.removeMember);
 
-	// Retrieve a single Tutorial with id
-	router.get("/:id", rooms.findOne);
+	router.delete("/getout", rooms.getOutRoom);
 
-	// Update a Tutorial with id
-	router.put("/:id", rooms.update);
+	// Update phong
+	router.put("/update", rooms.updateRoom);
 
-	// Delete a Tutorial with id
-	router.delete("/:id", rooms.delete);
+	// lay thanh vien
+	router.get("/members", rooms.getMembersRoom);
 
-	// Create a new Tutorial
-	router.delete("/", rooms.deleteAll);
+	// lay tat ca phong nguoi dung o
+	router.get("/:user_id", rooms.findAll);
 
-	app.use("/api/rooms", router);
+	// xoa phong
+	router.delete("/:room_id", rooms.deleteRoom);
+
+	app.use("/rooms", router);
 };

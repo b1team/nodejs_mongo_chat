@@ -2,6 +2,8 @@ const express = require("express");
 
 const cors = require("cors");
 
+require("dotenv").config();
+
 const app = express();
 
 var corsOptions = {
@@ -9,7 +11,6 @@ var corsOptions = {
 };
 
 app.use(cors(corsOptions));
-
 
 app.use(express.json());
 
@@ -36,8 +37,8 @@ app.get("/", (req, res) => {
 
 require("./app/routes/users.routes")(app);
 require("./app/routes/rooms.routes")(app);
-require("./app/routes/room_member.routes")(app);
 require("./app/routes/messages.routes")(app);
+require("./app/routes/send_mess.routes")(app);
 
 const PORT = process.env.PORT || 8080;
 app.listen(PORT, () => {
