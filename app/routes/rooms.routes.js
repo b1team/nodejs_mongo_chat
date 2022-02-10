@@ -1,29 +1,30 @@
 module.exports = (app) => {
+	const auth = require("../controllers/auth.controller");
 	const rooms = require("../controllers/rooms.controller.js");
 
 	var router = require("express").Router();
 
 	// tao phong
-	router.post("/", rooms.create);
+	router.post("/", auth.verifyToken, rooms.create);
 
 	// moi thanh vien
-	router.post("/invite", rooms.inviteMember);
+	router.post("/invite", auth.verifyToken, rooms.inviteMember);
 
-	router.delete("/remove", rooms.removeMember);
+	router.delete("/remove", auth.verifyToken, rooms.removeMember);
 
-	router.delete("/getout", rooms.getOutRoom);
+	router.delete("/getout", auth.verifyToken, rooms.getOutRoom);
 
 	// Update phong
-	router.put("/update", rooms.updateRoom);
+	router.put("/update", auth.verifyToken, rooms.updateRoom);
 
 	// lay thanh vien
-	router.get("/members", rooms.getMembersRoom);
+	router.get("/members", auth.verifyToken, rooms.getMembersRoom);
 
 	// lay tat ca phong nguoi dung o
-	router.get("/:user_id", rooms.findAll);
+	router.get("/:user_id", auth.verifyToken, rooms.findAll);
 
 	// xoa phong
-	router.delete("/:room_id", rooms.deleteRoom);
+	router.delete("/:room_id", auth.verifyToken, rooms.deleteRoom);
 
 	app.use("/rooms", router);
 };
