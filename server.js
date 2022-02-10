@@ -35,6 +35,7 @@ app.get("/", (req, res) => {
 	res.json({ message: "Welcome to chatapp" });
 });
 
+require("./app/routes/auth.routes")(app);
 require("./app/routes/users.routes")(app);
 require("./app/routes/rooms.routes")(app);
 require("./app/routes/messages.routes")(app);
