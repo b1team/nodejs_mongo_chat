@@ -13,7 +13,7 @@ module.exports = (app) => {
 	router.get("/:username", auth.verifyToken, users.findOne);
 
 	// update theo id
-	router.put("/:id", auth.verifyToken, users.update);
+	router.put("/", auth.verifyToken, users.update);
 
 
 	app.use("/users", router);

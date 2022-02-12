@@ -86,9 +86,10 @@ exports.update = (req, res) => {
 		});
 	}
 
-	const id = req.params.id;
-	if (req.user.user_id !== id) {
-		res.status(403).send({ message: "You are not allowed to access this resource" });
+	const id = req.user.user_id;
+	if (strip.strip(req.body.username).length == 0) {
+		res.status(400).send({ message: "Username can not be empty!" });
+		return;
 	}
 
 	User.findByIdAndUpdate(id, req.body, { useFindAndModify: false, new: true })

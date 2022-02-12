@@ -21,10 +21,10 @@ module.exports = (app) => {
 	router.get("/members", auth.verifyToken, rooms.getMembersRoom);
 
 	// lay tat ca phong nguoi dung o
-	router.get("/:user_id", auth.verifyToken, rooms.findAll);
+	router.get("/", auth.verifyToken, rooms.loadAllRooms);
 
 	// xoa phong
-	router.delete("/:room_id", auth.verifyToken, rooms.deleteRoom);
+	router.delete("/", auth.verifyToken, rooms.deleteRoom);
 
 	app.use("/rooms", router);
 };
