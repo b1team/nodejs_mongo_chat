@@ -42,6 +42,24 @@ require("./app/routes/messages.routes")(app);
 require("./app/routes/send_mess.routes")(app);
 
 const PORT = process.env.PORT || 8080;
-app.listen(PORT, () => {
-	console.log(`Server is running on port ${PORT}.`);
+
+const wss = require("./websocket")
+
+const server = require("http").createServer(app);
+
+server.on('upgrade', function upgrade(request, socket, head) {
+	if (request.url.indexOf('/ws/chat') === 0) {
+		wss.chatWS.handleUpgrade(request, socket, head, function done(ws) {
+			wss.chatWS.emit('connection', ws, request);
+		});
+	} else if (request.url.indexOf('/ws/notifications') === 0) {
+		wss.notifyWS.handleUpgrade(request, socket, head, function done(ws) {
+			wss.notifyWS.emit('connection', ws, request);
+		});
+	}
 });
+
+
+server.listen(PORT, () => {
+	console.log(`Server is running on port ${PORT}.`);
+})
