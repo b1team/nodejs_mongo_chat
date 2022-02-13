@@ -1,4 +1,5 @@
 const auth = require("../services/auth.services");
+const url = require("url");
 
 
 // login handler
@@ -37,4 +38,25 @@ const verifyToken = (req, res, next) => {
     }
 }
 
-module.exports = { loginHandler, verifyToken }
+
+const verifyWebsocketToken = (info, cb) => {
+    const params = url.parse(info.req.url, true).query;
+    const token = params.token;
+    if (!token) {
+        console.log("No token provided");
+        cb(false, 401, 'Unauthorized');
+    }
+    else {
+        auth.verifyToken(token).then(user => {
+            info.req.user = user;
+            cb(true);
+        }).catch(
+            err => {
+                console.info("Invalid token: " + err);
+                cb(false, 401, 'Unauthorized');
+            }
+        )
+    }
+}
+
+module.exports = { loginHandler, verifyToken, verifyWebsocketToken }

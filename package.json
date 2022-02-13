@@ -24,7 +24,8 @@
 		"jsonwebtoken": "^8.5.1",
 		"mongoose": "^5.8.10",
 		"package.json": "^2.0.1",
-		"redis": "^4.0.2"
+		"redis": "^4.0.2",
+		"ws": "^8.5.0"
 	},
 	"devDependencies": {
 		"prettier": "2.5.1"
