@@ -2,22 +2,23 @@ const db = require("../models");
 const Message = db.messages;
 const messageService = require("../services/messages.services");
 const redis = require("../services/redis.services");
+const strip = require("../utils/trim.utils");
 
 exports.senMessage = (req, res) => {
-    if (!req.body.content) {
+    if (strip.strip(req.body.content).length == 0) {
 		res.status(400).send({ message: "Content can not be empty!" });
 		return;
 	}
-    const username = req.body.username; // lay tu auth
+    const username = req.user.username; // lay tu auth
 	// Create a Message
 	const message = new Message({
 		content: req.body.content,
-		sender_id: req.body.sender_id, // user_id lay tu auth
+		sender_id: req.user.user_id, // user_id lay tu auth
 		room_id: req.body.room_id,
 	});
 
     const room_id = req.body.room_id;
-    const sender_id = req.body.sender_id;
+    const sender_id = req.user.user_id;
 
     message
 		.save(message)
@@ -31,7 +32,7 @@ exports.senMessage = (req, res) => {
                     return;
                 }
                 for (const member of members) {
-                    if (member != sender_id){
+                    if (String(member) != String(sender_id)){
                         redis.publish(channel=member, event=event)
                     }
                 }

@@ -23,7 +23,7 @@ exports.create = (req, res) => {
 		room_name: req.query.room_name,
 	});
 
-	const user_id = req.body.user_id;
+	const user_id = req.user.user_id;
 	if (!user_id) {
 		res.status(404).send({ message: "user_id is required"});
 		return;
@@ -57,9 +57,8 @@ exports.create = (req, res) => {
 };
 
 // Lay user o
-exports.findAll = (req, res) => {
-	const user_id = req.params.user_id;
-	console.log("herrr", user_id);
+exports.loadAllRooms = (req, res) => {
+	const user_id = req.user.user_id;
 	roomService.inRoom(user_id, (err, rooms) => {
 		if (err) {
 			res.status(404).send(err);
@@ -112,16 +111,30 @@ exports.removeMember = (req, res) => {
 		member_name: req.body.member_name,
 	};
 
-	// code kiem tra admin o day
-	roomService.removeMember(info, (err, member) => {
+	const data = {
+		room_id: req.body.room_id,
+		user_id: req.user.user_id
+	}
+	roomService.checkAdmin(data, (err, admin) => {
 		if (err) {
-			res.status(400).send("Cannot remove member")
+			res.status(404).send(err)
 			return;
 		}
-		const event = {event_type: "delete", payload: {room_id: info.room_id}}
-        const channel = `${member}_notify`
-		redis.publish(channel=channel, event=event)
-		res.send({success: true})
+		if (!admin) {
+			res.status(400).send({"message": "You are not admin"})
+			return;
+		}
+
+		roomService.removeMember(info, (err, member) => {
+			if (err) {
+				res.status(400).send("Cannot remove member")
+				return;
+			}
+			const event = {event_type: "delete", payload: {room_id: info.room_id}}
+			const channel = `${member}_notify`
+			redis.publish(channel=channel, event=event)
+			res.send({success: true})
+		})
 	})
 }
 
@@ -138,6 +151,11 @@ exports.updateRoom = (req, res) => {
 	const info = {
 		room_name: strip.strip(req.body.room_name),
 		avatar: strip.strip(req.body.avatar)
+	}
+
+	if (info.room_name == "" || info.avatar == "") {
+		res.status(400).send({message: "Room name and avatar is required"});
+		return;
 	}
 
 	Room.findByIdAndUpdate(room_id, info, { useFindAndModify: false, new: true })
@@ -157,7 +175,7 @@ exports.updateRoom = (req, res) => {
 
 // xoa phong
 exports.deleteRoom = (req, res) => {
-	const id = req.params.room_id;
+	const id = req.query.room_id;
 	// code kiem tra admin o day
 	roomService.roomDelete(id, (err, statuss) => {
 		if (err) { res.status(500).send({success: false})}

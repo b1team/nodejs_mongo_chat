@@ -2,11 +2,13 @@ const db = require("../models");
 const Message = db.messages;
 const messageService = require("../services/messages.services");
 const redis = require("../services/redis.services");
+const strip = require("../utils/trim.utils");
+
 
 // Tao tin nhan
 exports.create = (req, res) => {
 	// Validate request
-	if (!req.body.content) {
+	if (strip.strip(req.body.content).length == 0) {
 		res.status(400).send({ message: "Content can not be empty!" });
 		return;
 	}
@@ -14,7 +16,7 @@ exports.create = (req, res) => {
 	// Create a Message
 	const message = new Message({
 		content: req.body.content,
-		sender_id: req.body.sender_id,
+		sender_id: req.user.user_id,
 		room_id: req.body.room_id,
 	});
 
@@ -37,7 +39,7 @@ exports.getAllMessage = (req, res) => {
 
 	Message.find({room_id: room_id})
 		.then((messages) => {
-			messageService.getAllMessage(messages, (err, _messages) => {
+			messageService.getAllMessage(messages.toJSON(), (err, _messages) => {
 				if (err) {
 					res.status(404).send(err);
 					return;
@@ -61,7 +63,7 @@ exports.updateMessage = (req, res) => {
 	}
 
 	const filter = {
-		sender_id: req.body.sender_id,
+		sender_id: req.user.user_id,
 		_id: req.body.message_id,
 	};
 
@@ -69,22 +71,26 @@ exports.updateMessage = (req, res) => {
 		content: req.body.content,
 	};
 
-	Message.findOneAndUpdate(filter, update, {new: true })
+	Message.findOneAndUpdate(filter, update, {useFindAndModify: false, new: true })
 		.then((data) => {
 			if (!data) {
 				res.status(404).send({
 					message: `Cannot update Message. Maybe Message was not found!`,
 				});
 			} else {
-				messageService.getMemberId(data.room_id, (err, members) => {
+				messageService.getMemberId(req.body.room_id, (err, members) => {
+					if (err) {
+						res.status(404).send(err);
+						return;
+					}
 					for (const member of members) {
-						if (member != filter.sender_id) {
+						if (String(member) != String(filter.sender_id)) {
 							const event = {
 								event_type: "update",
 								payload: {
-									room_id: data.room_id,
-									content: data.content,
-									message_id: data.message_id,
+									room_id: req.body.room_id,
+									content: req.body.content,
+									message_id: req.body.message_id,
 								},
 							};
 							const channel = `${member}_notify`;
@@ -108,7 +114,7 @@ exports.updateMessage = (req, res) => {
 exports.deleteMessage = (req, res) => {
 	const filter_del = {
 		message_id: req.body.message_id,
-		sender_id: req.body.sender_id
+		sender_id: req.user.user_id
 	}
 	const room_id = req.body.room_id
 	const index = req.body.index
@@ -122,7 +128,7 @@ exports.deleteMessage = (req, res) => {
 			} else {
 				messageService.getMemberId(room_id, (err, members) => {
 					for (const member of members) {
-						if (member != filter.sender_id) {
+						if (String(member) != String(filter.sender_id)) {
 							const event = {
 								event_type: "delete_mess",
 								payload: {

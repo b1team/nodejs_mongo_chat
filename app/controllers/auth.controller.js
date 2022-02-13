@@ -7,12 +7,11 @@ const loginHandler = (req, res) => {
     // get the user from the database
     auth.login(req.body.username, req.body.password)
         .then(token => {
-            res.json({ "access_token": token, "token_type": "bearer" });
+            res.status(200).send({ "access_token": token, "token_type": "bearer" });
         })
         .catch(err => {
             console.log("LOGIN ERROR: " + err)
-            const message = "Invalid username or password";
-            res.status(401).send({ "message": message });
+            res.status(401).send({ "message": err });
         });
 }
 
