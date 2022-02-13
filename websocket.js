@@ -22,9 +22,11 @@ chatWebsocketServer.on('connection', function connection(ws, request) {
         ws.close(code = 1008, data = JSON.stringify({ "message": "Unauthorized" }));
         return
     }
-    const subscriber = redis.createClient(process.env.REDIS_URL)
+    const subscriber = redis.createClient({ url: process.env.REDIS_URL })
     subscriber.duplicate()
-    subscriber.connect()
+    subscriber.connect().catch(err => {
+        console.error("CONNECT TO CHAT REDIS ERROR: " + err)
+    })
     const user_id = request.user.user_id
     console.info("USER:  " + user_id + " CONNECTED")
     subscriber.subscribe(user_id.toString(), (message) => {
@@ -42,9 +44,11 @@ notifyWebsocketServer.on('connection', function connection(ws, request) {
         ws.close(code = 1008, data = JSON.stringify({ "message": "Unauthorized" }));
         return
     }
-    const subscriber = redis.createClient(process.env.REDIS_URL)
+    const subscriber = redis.createClient({ url: process.env.REDIS_URL })
     subscriber.duplicate()
-    subscriber.connect()
+    subscriber.connect().catch(err => {
+        console.error("CONNECT TO NOTIFY REDIS ERROR: " + err)
+    })
     const user_id = request.user.user_id
     console.info("USER:  " + user_id + " IS CONNECTED TO NOTIFICATIONS")
     subscriber.subscribe(user_id.toString() + "_notify", (message) => {

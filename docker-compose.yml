@@ -1,0 +1,47 @@
+version: "3.5"
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: chatapp
+    env_file: .env
+    ports:
+      # - "8080:8080"
+      - "${API_PORT}:${API_PORT}"
+    depends_on:
+      - db
+      - redis
+    restart: unless-stopped
+    networks:
+      - main-net
+
+  db:
+    image: mongo:4.2
+    restart: unless-stopped
+    networks:
+      - main-net
+    volumes:
+      - mongodata:/data/db
+    env_file: .env
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=${MONGO_INITDB_ROOT_USERNAME}
+      - MONGO_INITDB_ROOT_PASSWORD=${MONGO_INITDB_ROOT_PASSWORD}
+
+  redis:
+    image: redis:5.0.7
+    restart: unless-stopped
+    networks:
+      - main-net
+    volumes:
+      - redisdata:/data
+    env_file: .env
+
+networks:
+  main-net:
+    driver: bridge
+
+volumes:
+  mongodata:
+  redisdata:
