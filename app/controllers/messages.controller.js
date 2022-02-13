@@ -39,7 +39,7 @@ exports.getAllMessage = (req, res) => {
 
 	Message.find({room_id: room_id})
 		.then((messages) => {
-			messageService.getAllMessage(messages, (err, _messages) => {
+			messageService.getAllMessage(messages.toJSON(), (err, _messages) => {
 				if (err) {
 					res.status(404).send(err);
 					return;
@@ -78,15 +78,19 @@ exports.updateMessage = (req, res) => {
 					message: `Cannot update Message. Maybe Message was not found!`,
 				});
 			} else {
-				messageService.getMemberId(data.room_id, (err, members) => {
+				messageService.getMemberId(req.body.room_id, (err, members) => {
+					if (err) {
+						res.status(404).send(err);
+						return;
+					}
 					for (const member of members) {
 						if (String(member) != String(filter.sender_id)) {
 							const event = {
 								event_type: "update",
 								payload: {
-									room_id: data.room_id,
-									content: data.content,
-									message_id: data.message_id,
+									room_id: req.body.room_id,
+									content: req.body.content,
+									message_id: req.body.message_id,
 								},
 							};
 							const channel = `${member}_notify`;
