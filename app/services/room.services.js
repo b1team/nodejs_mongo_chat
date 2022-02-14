@@ -8,12 +8,10 @@ const Messages = db.messages;
 
 module.exports.inviteMember = function (data, callback) {
 	userService.getUser(data.member_name, (err, user) => {
-		const room_member = new RoomMember({
-			room_id: data.room_id,
-			member_id: user.user_id,
-			is_admin: data.is_owner,
-		});
-
+		if(err) {
+			callback(null, err);
+			return;
+		}
 		RoomMember.findOne({ room_id: data.room_id, member_id: user.user_id }, (err, member) => {
 			if (err) {
 				callback(null, err);
@@ -23,6 +21,12 @@ module.exports.inviteMember = function (data, callback) {
 				callback(null, member.toJSON());
 				return;
 			}
+
+			const room_member = new RoomMember({
+				room_id: data.room_id,
+				member_id: user.user_id,
+				is_owner: data.is_owner,
+			});
 
 			room_member
 				.save(room_member)
@@ -44,7 +48,10 @@ module.exports.inRoom = function (user_id, callback) {
 				.then((room) => {
 					const data = JSON.parse(JSON.stringify(room));
 					messageService.getLastMessage(info.room_id, (err, lastMessage) => {
-						if (err) callback(null, err);
+						if (err) {
+							callback(null, err);
+							return;
+						}
 						const messageLast = JSON.parse(JSON.stringify(lastMessage));
 						try {
 							messageLast["timestamp"] = dateFormat.date_format(
@@ -88,7 +95,7 @@ module.exports.checkMemberExists = function (info, callback) {
 			callback(null, true);
 			return;
 		}
-		RoomMember.findOne({ member_id: user.user_id }).then((data) => {
+		RoomMember.findOne({ member_id: user.user_id, room_id: info.room_id }).then((data) => {
 			if (data == null) {
 				callback(null, false);
 				return;
@@ -119,7 +126,7 @@ module.exports.removeMember = function (info, callback) {
 };
 
 module.exports.checkAdmin = function (info, callback) {
-	RoomMember.findOne({ room_id: info.room_id, member_id: info.user_id }).the((data) => {
+	RoomMember.findOne({ room_id: info.room_id, member_id: info.user_id }).then((data) => {
 		if (data.is_owner) {
 			callback(null, true);
 			return;
@@ -142,7 +149,7 @@ module.exports.getMembers = function (room_id, callback) {
 						callback(null, err);
 						return;
 					}
-					_user = JSON.parse(JSON.stringify(user));
+					_user = user;
 					_user["is_owner"] = member.is_owner;
 					listMember.push(_user);
 
