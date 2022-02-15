@@ -1,9 +1,8 @@
 const db = require("../models");
 const Message = db.messages;
 const messageService = require("../services/messages.services");
-const redis = require("../services/redis.services");
 const strip = require("../utils/trim.utils");
-
+const redis = require("redis");
 
 // Tao tin nhan
 exports.create = (req, res) => {
@@ -37,21 +36,13 @@ exports.create = (req, res) => {
 exports.getAllMessage = (req, res) => {
 	const room_id = req.query.room_id;
 
-	Message.find({room_id: room_id})
-		.then((messages) => {
-			messageService.getAllMessage(messages.toJSON(), (err, _messages) => {
-				if (err) {
-					res.status(404).send(err);
-					return;
-				}
-				res.send({ messages: _messages, count: _messages.length });
-			})
-		})
-		.catch((err) => {
-			res.status(500).send({
-				message: err.message || "Some error occurred while retrieving messages.",
-			});
-		});
+	messageService.getAllMessage(room_id, (err, _messages) => {
+		if (err) {
+			res.status(404).send(err);
+			return;
+		}
+		res.send({ messages: _messages, count: _messages.length });
+	});
 };
 
 // Update a Message by the id in the request
@@ -71,7 +62,18 @@ exports.updateMessage = (req, res) => {
 		content: req.body.content,
 	};
 
-	Message.findOneAndUpdate(filter, update, {useFindAndModify: false, new: true })
+	const publisher = redis.createClient({ url: process.env.REDIS_URL });
+	publisher
+		.connect()
+		.then(() => {
+			console.log("Connected to Redis " + process.env.REDIS_URL);
+		})
+		.catch((err) => {
+			console.error("CONNECT TO REDIS ERROR: " + err);
+			return;
+		});
+
+	Message.findOneAndUpdate(filter, update, { useFindAndModify: false, new: true })
 		.then((data) => {
 			if (!data) {
 				res.status(404).send({
@@ -94,8 +96,14 @@ exports.updateMessage = (req, res) => {
 								},
 							};
 							const channel = `${member}_notify`;
-							console.log(event);
-							redis.publish(channel=channel,event=event)
+							publisher
+								.publish(channel.toString(), JSON.stringify(event))
+								.then((value) => {
+									console.log(`Publish update message to ${channel} success!`);
+								})
+								.catch((err) => {
+									console.error("PUBLISH UPDATE MESSAGE ERROR: " + err);
+								});
 						}
 					}
 					res.send({ success: true });
@@ -105,7 +113,7 @@ exports.updateMessage = (req, res) => {
 		.catch((err) => {
 			res.status(500).send({
 				message: "Error updating Message",
-				error: err
+				error: err,
 			});
 		});
 };
@@ -113,11 +121,23 @@ exports.updateMessage = (req, res) => {
 // Delete a Message with the specified id in the request
 exports.deleteMessage = (req, res) => {
 	const filter_del = {
-		message_id: req.body.message_id,
-		sender_id: req.user.user_id
-	}
-	const room_id = req.body.room_id
-	const index = req.body.index
+		_id: req.body.message_id,
+		sender_id: req.user.user_id,
+	};
+
+	const room_id = req.body.room_id;
+	const index = req.body.index;
+
+	const publisher = redis.createClient({ url: process.env.REDIS_URL });
+	publisher
+		.connect()
+		.then(() => {
+			console.log("Connected to Redis " + process.env.REDIS_URL);
+		})
+		.catch((err) => {
+			console.error("CONNECT TO REDIS ERROR: " + err);
+			return;
+		});
 
 	Message.findOneAndDelete(filter_del)
 		.then((data) => {
@@ -127,19 +147,38 @@ exports.deleteMessage = (req, res) => {
 				});
 			} else {
 				messageService.getMemberId(room_id, (err, members) => {
+					if (err) {
+						res.status(404).send(err);
+						return;
+					}
+					console.log("MEMBERS",members);
+					// const event = {
+					// 	event_type: "delete_mess",
+					// 	payload: {
+					// 		room_id: room_id,
+					// 		message_id: filter_del._id,
+					// 		index: index,
+					// 	},
+					// };
 					for (const member of members) {
-						if (String(member) != String(filter.sender_id)) {
+						if (member.toString() != filter_del.sender_id.toString()) {
 							const event = {
 								event_type: "delete_mess",
 								payload: {
 									room_id: room_id,
-									message_id: filter_del.message_id,
+									message_id: filter_del._id,
 									index: index,
 								},
 							};
 							const channel = `${member}_notify`;
-							console.log(event);
-							redis.publish((channel = channel), (event = event));
+							publisher
+								.publish(channel.toString(), JSON.stringify(event))
+								.then((value) => {
+									console.log(`Publish delete message to ${channel} success!`);
+								})
+								.catch((err) => {
+									console.error("PUBLISH UPDATE MESSAGE ERROR: " + err);
+								});
 						}
 					}
 					res.send({ success: true });

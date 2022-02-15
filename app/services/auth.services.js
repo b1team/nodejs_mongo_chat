@@ -9,7 +9,7 @@ const login = (username, password) => {
         userService.getUserPassword(username)
             .then(user => {
                 if (user == null) {
-                    reject("Invalid username or password userNull");
+                    reject("Invalid username or password");
                     return;
                 }
                 verifyPassword(password, user.password).then(isValid => {
@@ -20,12 +20,12 @@ const login = (username, password) => {
                         });
                         resolve(token);
                     } else {
-                        reject("Invalid username or password in verifyPassword");
+                        reject("Invalid username or password");
                     }
                 }
                 ).catch(err => {
                     console.warn("verify password of user " + user.username + " failed. error: " + err);
-                    reject("Invalid username or password in getUserPassword");
+                    reject("Invalid username or password");
                 }
                 );
             })

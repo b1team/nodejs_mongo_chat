@@ -11,7 +11,8 @@ const loginHandler = (req, res) => {
         })
         .catch(err => {
             console.log("LOGIN ERROR: " + err)
-            res.status(401).send({ "message": err });
+            const message = "Invalid username or password";
+            res.status(401).send({ "message": message });
         });
 }
 
