@@ -7,7 +7,7 @@ const apiConfig = require("./app/config/api.config");
 const app = express();
 
 var corsOptions = {
-	origin: apiConfig.ALLOWED_ORIGINS,
+	origin: "*",
 };
 
 app.use(cors(corsOptions));
