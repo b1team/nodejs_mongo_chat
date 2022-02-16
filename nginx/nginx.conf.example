@@ -1,0 +1,94 @@
+VERION1
+------------
+server {
+    listen                  80;
+    server_name             localhost;
+    return                  301 https://$server_name$request_uri;
+}
+
+server {
+    listen                  443 ssl;
+    listen                  [::]:443 ssl;
+    server_name             localhost;
+    server_tokens           off;
+
+    location / {
+        proxy_pass          http://nodejsapp:9999;
+        proxy_http_version  1.1;
+        proxy_set_header    Upgrade $http_upgrade;
+        proxy_set_header    Connection 'upgrade';
+        proxy_set_header    Host $host;
+        proxy_cache_bypass  $http_upgrade;
+    }
+
+    location /ws/chat {
+        proxy_pass          http://nodejsapp:9999;
+        proxy_http_version  1.1;
+        proxy_set_header    Upgrade $http_upgrade;
+        proxy_set_header    Connection 'upgrade';
+        proxy_set_header    Host $host;
+        proxy_cache_bypass  $http_upgrade;
+    }
+
+    location /ws/notifications {
+        proxy_pass          http://nodejsapp:9999;
+        proxy_http_version  1.1;
+        proxy_set_header    Upgrade $http_upgrade;
+        proxy_set_header    Connection 'upgrade';
+        proxy_set_header    Host $host;
+        proxy_cache_bypass  $http_upgrade;
+    }
+
+    ssl_certificate         /etc/letsencrypt/live/sendpi.com/fullchain.pem;
+    ssl_certificate_key     /etc/letsencrypt/live/sendpi.com/privkey.pem;
+    include                 /etc/letsencrypt/options-ssl-nginx.conf;
+    ssl_dhparam             /etc/letsencrypt/ssl-dhparams.pem;
+
+}
+
+------------
+VERSION 2
+--------------
+server {
+    listen                     80;
+    # listen                     443 ssl;
+    server_name                example.localhost;
+
+    # ssl_certificate            /etc/nginx/ssl/server.crt;
+    # ssl_certificate_key        /etc/nginx/ssl/server.key;
+
+    # ssl_session_cache          shared:SSL:10m;
+    # ssl_session_timeout        5m;
+
+    # ssl_ciphers                HIGH:!aNULL:!MD5;
+    # ssl_prefer_server_ciphers  on;
+
+    add_header Access-Control-Allow-Origin *;
+
+    location / {
+        proxy_pass             http://nodejsapp:9999;
+        proxy_http_version     1.1;
+        proxy_set_header       Upgrade $http_upgrade;
+        proxy_set_header       Connection 'upgrade';
+        proxy_set_header       Host $host;
+        proxy_cache_bypass     $http_upgrade;
+    }
+
+    location /ws/chat {
+        proxy_pass             http://nodejsapp:9999;
+        proxy_http_version     1.1;
+        proxy_set_header       Upgrade $http_upgrade;
+        proxy_set_header       Connection 'upgrade';
+        proxy_set_header       Host $host;
+        proxy_cache_bypass     $http_upgrade;
+    }
+
+    location /ws/notifications {
+        proxy_pass             http://nodejsapp:9999;
+        proxy_http_version     1.1;
+        proxy_set_header       Upgrade $http_upgrade;
+        proxy_set_header       Connection 'upgrade';
+        proxy_set_header       Host $host;
+        proxy_cache_bypass     $http_upgrade;
+    }
+}
