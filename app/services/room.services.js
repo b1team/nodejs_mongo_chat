@@ -52,16 +52,19 @@ module.exports.inRoom = function (user_id, callback) {
 							callback(null, err);
 							return;
 						}
-						const messageLast = JSON.parse(JSON.stringify(lastMessage));
 						try {
+							const messageLast = JSON.parse(JSON.stringify(lastMessage));
 							messageLast["timestamp"] = dateFormat.date_format(
 								messageLast["created_at"]
 							);
+							data["last_message"] = messageLast == null ? {} : messageLast;
 						} catch (error) {
-							messageLast = {};
+							const messageLast = {};
+							messageLast['content'] = "";
+							messageLast["timestamp"] = dateFormat.date_format(new Date().toISOString());
+							data["last_message"] = messageLast == null ? {} : messageLast;
 						}
 
-						data["last_message"] = messageLast == null ? {} : messageLast;
 						listRoom.push(data);
 						if (listRoom.length == length_break) {
 							callback(null, listRoom);
