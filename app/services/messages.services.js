@@ -33,6 +33,7 @@ module.exports.getAllMessage = function(room_id, callback) {
 	const listMessage = [];
 	const _user = {};
 	Messages.find({room_id: room_id}).then((messages) => {
+		if (messages.length == 0) return callback(null, messages);
 		for (const message of messages) {
 			if (_user[message.sender_id] === undefined) {
 				userService.getUserInfo(message.sender_id, (err, user) => {
