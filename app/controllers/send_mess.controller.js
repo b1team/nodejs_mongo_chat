@@ -42,17 +42,14 @@ exports.senMessage = (req, res) => {
 					return;
 				}
 				members.forEach((member) => {
-					if (member != sender_id) {
-						console.log("member: ", member);
-						publisher
-							.publish(member.toString(), JSON.stringify(event))
-							.then((value) => {
-								console.info("Sent message to: ", member);
-							})
-							.catch((err) => {
-								console.error("Error: ", err);
-							});
-					}
+					publisher
+						.publish(member.toString(), JSON.stringify(event))
+						.then((value) => {
+							console.info("Sent message to: ", member);
+						})
+						.catch((err) => {
+							console.error("Error: ", err);
+						});
 				});
 			});
 			res.send(message);

@@ -123,7 +123,7 @@ module.exports.removeMember = function (info, callback) {
 				callback(null, null);
 				return;
 			}
-			callback(null, { user_id: user.user_id });
+			callback(null,  user.user_id );
 		});
 	});
 };

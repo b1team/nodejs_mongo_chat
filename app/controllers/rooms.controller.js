@@ -3,6 +3,7 @@ const Room = db.rooms;
 const userService = require("../services/user.services");
 const roomService = require("../services/room.services");
 const strip = require("../utils/trim.utils");
+const messageService = require("../services/messages.services");
 
 const redis = require("redis");
 
@@ -222,6 +223,16 @@ exports.updateRoom = (req, res) => {
 // xoa phong
 exports.deleteRoom = (req, res) => {
 	const id = req.query.room_id;
+	const publisher = redis.createClient({ url: process.env.REDIS_URL });
+	publisher
+		.connect()
+		.then(() => {
+			console.log("Connected to Redis " + process.env.REDIS_URL);
+		})
+		.catch((err) => {
+			console.error("CONNECT TO REDIS ERROR: " + err);
+			return;
+		});
 	// code kiem tra admin o day
 	roomService.roomDelete(id, (err, statuss) => {
 		if (err) {
@@ -235,7 +246,26 @@ exports.deleteRoom = (req, res) => {
 						message: `Cannot delete Room with id=${id}. Maybe Room was not found!`,
 					});
 				} else {
-					res.send(statuss);
+					const event = { event_type: "delete", payload: { room_id: id } };
+					messageService.getMemberId(id, (err, members) => {
+						if (err) {
+							res.status(404).send(err);
+							return;
+						}
+
+						for (const member of members) {
+							const channel = `${member}_notify`;
+							publisher
+								.publish(channel.toString(), JSON.stringify(event))
+								.then((value) => {
+									console.log(`PUBLISH DELETE ROOM TO ${channel} success!`);
+								})
+								.catch((err) => {
+									console.error("PUBLISH UPDATE MESSAGE ERROR: " + err);
+								});
+						}
+						res.send(statuss);
+					});
 				}
 			})
 			.catch((err) => {
@@ -253,13 +283,32 @@ exports.getOutRoom = (req, res) => {
 		room_id: req.body.room_id,
 		member_name: req.body.member_name,
 	};
-
+	const publisher = redis.createClient({ url: process.env.REDIS_URL });
+	publisher
+		.connect()
+		.then(() => {
+			console.log("Connected to Redis " + process.env.REDIS_URL);
+		})
+		.catch((err) => {
+			console.error("CONNECT TO REDIS ERROR: " + err);
+			return;
+		});
 	// code kiem tra admin o day
 	roomService.removeMember(info, (err, member) => {
 		if (err) {
 			res.status(400).send("Cannot get out room");
 			return;
 		}
+		const event = { event_type: "delete", payload: { room_id: info.room_id } };
+		const channel = `${member}_notify`;
+		publisher
+			.publish(channel.toString(), JSON.stringify(event))
+			.then((value) => {
+				console.log("GETOUT SUCCESS");
+			})
+			.catch((err) => {
+				console.log("GETOUT ERROR: " + err);
+			});
 		res.send({ success: true });
 	});
 };
