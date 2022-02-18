@@ -149,26 +149,27 @@ exports.deleteMessage = (req, res) => {
 						res.status(404).send(err);
 						return;
 					}
-
-					for (const member of members) {
-						const event = {
-							event_type: "delete_mess",
-							payload: {
-								room_id: room_id,
-								message_id: filter_del._id,
-								index: index,
-							},
-						};
-						const channel = `${member}_notify`;
-						publisher
-							.publish(channel.toString(), JSON.stringify(event))
-							.then((value) => {
-								console.log(`Publish delete message to ${channel} success!`);
-							})
-							.catch((err) => {
-								console.error("PUBLISH UPDATE MESSAGE ERROR: " + err);
-							});
-					}
+					members.forEach((member) => {
+						if (member.toString() !== filter_del.sender_id){
+							const event = {
+								event_type: "delete_mess",
+								payload: {
+									room_id: room_id,
+									message_id: filter_del._id,
+									index: index,
+								},
+							};
+							const channel = `${member}_notify`;
+							publisher
+								.publish(channel.toString(), JSON.stringify(event))
+								.then((value) => {
+									console.log(`Publish delete message to ${channel} success!`);
+								})
+								.catch((err) => {
+									console.error("PUBLISH UPDATE MESSAGE ERROR: " + err);
+								});
+						}
+					})
 					res.send({ success: true });
 				});
 			}
